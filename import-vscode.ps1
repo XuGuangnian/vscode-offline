@@ -1,5 +1,5 @@
 param(
-    [string]$PackageDir = ".",
+    [string]$PackageDir = ".\vscode-offline-package",
     [string[]]$Include,
     [string[]]$Exclude,
     [string]$Filter
@@ -10,6 +10,23 @@ $ErrorActionPreference = "Stop"
 function Log($msg) {
     Write-Host ""
     Write-Host "==== $msg ====" -ForegroundColor Cyan
+}
+
+function EnsureDir($path) {
+    if (!(Test-Path $path)) {
+        New-Item -ItemType Directory -Path $path | Out-Null
+    }
+}
+
+function AssertPathExists($path, $hint) {
+    if (!(Test-Path $path)) {
+        Write-Host ""
+        Write-Host "ERROR: Path not found: $path" -ForegroundColor Red
+        if ($hint) {
+            Write-Host $hint -ForegroundColor Yellow
+        }
+        throw "Missing required path: $path"
+    }
 }
 
 function FindCodeCmd {
@@ -58,8 +75,17 @@ function MatchExtension($fileName, $Include, $Exclude, $Filter) {
 
 # =====================
 
+$expectedDefault = ".\vscode-offline-package"
+if ($PackageDir -eq "." -and (Test-Path $expectedDefault)) {
+    $PackageDir = $expectedDefault
+}
+
 $vsixDir = Join-Path $PackageDir "vsix"
 $userDir = Join-Path $PackageDir "user"
+
+AssertPathExists $PackageDir "Hint: run .\export-vscode.ps1 on an online machine, then copy/unzip the folder 'vscode-offline-package' next to this script; or pass -PackageDir explicitly."
+AssertPathExists $vsixDir "Hint: expected VSIX files under '$vsixDir'. Make sure you copied/unzipped the export package completely."
+EnsureDir $userDir
 
 Log "Find VS Code CLI"
 $codeCmd = FindCodeCmd
